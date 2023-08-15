@@ -7,6 +7,7 @@ import random
 from urllib import request, parse
 from pytube import YouTube
 from pydub import AudioSegment
+from pydub.playback import play
 
 # Load the environment variables from the .env file
 load_dotenv()
@@ -69,33 +70,36 @@ def download_audio(video_url, folder_path):
 
 class Player:
     def __init__(self, folder_path):
-        pygame.init()
-        pygame.mixer.init()
         self.folder_path = folder_path
         self.play_list = [os.path.join(folder_path, f) for f in os.listdir(folder_path) if f.endswith('.mp3')]
         self.index = 0
         self.shuffle = False
-        self.volume = 5  # Default volume
+        self.volume = 1  # Default volume (0.0 to 1.0)
         print(self.play_list)
 
     def play(self):
         if not self.play_list:
             print("No songs to play!")
             return
-        pygame.mixer.music.load(self.play_list[self.index])
-        pygame.mixer.music.set_volume(self.volume / 10.0)  # Set the volume
-        pygame.mixer.music.play()
 
+        song = AudioSegment.from_file(self.play_list[self.index])
+        
+        # Apply fade in and fade out
+        song = song.fade_in(2000).fade_out(2000)  # 2 seconds fade in/out
+        
+        # Set volume
+        song = song - (1 - self.volume) * 50  # 50 here is an arbitrary number for volume control
+        
+        # Play the song
+        play(song)
+        
     def set_volume(self, volume):
-        self.volume = max(0, min(10, volume))  # Ensure volume is between 0 and 10
-        if pygame.mixer.music.get_busy():
-            pygame.mixer.music.set_volume(self.volume / 10.0)
-            print(f"volume set to {self.volume}/10")
-        else:
-            print("music is not playing.")
+        self.volume = max(0.0, min(1.0, volume))  # Ensure volume is between 0.0 and 1.0
+        print(f"Volume set to {self.volume * 100}%")
 
     def stop(self):
-        pygame.mixer.music.stop()
+        # Simpleaudio doesn't provide a stop function, so we move to the next track to effectively stop the current one
+        self.skip()
 
     def skip(self):
         self.index += 1
@@ -157,7 +161,7 @@ if __name__ == "__main__":
         elif command == "skip":
             player.skip()
         elif command == "volume":
-            volume_level = int(input("enter volume (0-10): "))
+            volume_level = float(input("enter volume (0.0-1.0): "))
             player.set_volume(volume_level)
         elif command == "quit":
             player.stop()
