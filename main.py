@@ -4,6 +4,7 @@ import re
 import json
 from urllib import request, parse
 from pytube import YouTube
+from pydub import AudioSegment
 import vlc
 import time
 import random
@@ -58,9 +59,14 @@ def download_audio(video_url, folder_path):
     title = yt.title.replace("/", " ").replace("\\", " ")
     mp3_filename = f"{title}.mp3"
     full_path = os.path.join(folder_path, mp3_filename)
-    
+
     if not os.path.exists(full_path):
         audio_file = audio_stream.download(output_path=folder_path)
+        base, ext = os.path.splitext(audio_file)
+        sound = AudioSegment.from_file(audio_file, format=ext.replace('.', ''))
+        sound.export(full_path, format='mp3')
+
+        os.remove(audio_file)
         print(f"downloaded: {full_path}")
     else:
         print(f"file {full_path} already exists. skipping download.")
@@ -80,38 +86,6 @@ def get_valid_playlists():
         print("\nNo playlists directory found.")
         
     return valid_playlists
-
-def music_player(playlist_folder):
-    player = Player(playlist_folder)
-    while True:
-        user_input = prompt("\nEnter command (start, resume, shuffle, pause, skip, volume, fade, quit): ", 
-                            completer=commands_completer,
-                            validator=CommandValidator(),
-                            validate_while_typing=True)
-
-        if user_input == "start":
-            player.start()
-        elif user_input == "resume":
-            player.resume()
-        elif user_input == "shuffle":
-            player.toggle_shuffle()
-        elif user_input == "pause":
-            player.pause()
-        elif user_input == "skip":
-            player.skip()
-        elif user_input == "volume":
-            volume_level = prompt("Enter volume (0.0-1.0): ", validator=VolumeValidator())
-            player.set_volume(float(volume_level))
-            print(f"Volume set to {float(volume_level)*100}%")
-        elif user_input == "fade":
-            fade_time = prompt("Enter fade time (0.0-10.0): ", validator=FadeValidator())
-            player.fade_duration = float(fade_time)
-            print(f"Fade time set to {fade_time} seconds.")
-        elif user_input == "quit":
-            player.stop()
-            break
-        else:
-            print("Invalid command!")
 
 def download_playlist(youtube_playlist_url):
     # Extracting the playlist ID
@@ -211,7 +185,8 @@ class Player:
         self.stop()
 
     def set_volume(self, volume_level):
-        self.current_volume = int(volume_level * 100)
+        volume = max(0, min(1, volume_level))
+        self.current_volume = int(volume * 100)
         self.player.audio_set_volume(self.current_volume)
 
     def enable_shuffle(self):
@@ -230,7 +205,67 @@ class Player:
         else:
             self.enable_shuffle()
 
+musicplayer = None
+
 menu = ConsoleMenu("music buddy", "let me guess tiny, a dime bag?")
+
+playermenu = ConsoleMenu("play music")
+playermenu_item = SubmenuItem("play music", playermenu, menu=menu)
+
+def musicplayer_start():
+   global musicplayer
+   musicplayer.start()
+
+musicplayer_start_function = FunctionItem("start", musicplayer_start)
+playermenu.append_item(musicplayer_start_function)
+
+def musicplayer_pause():
+   global musicplayer
+   if musicplayer.is_paused == True:
+       musicplayer.resume()
+   else:
+       musicplayer.pause()
+
+musicplayer_pause_function = FunctionItem("pause/resume", musicplayer_pause)
+playermenu.append_item(musicplayer_pause_function)
+
+def musicplayer_skip():
+   global musicplayer
+   musicplayer.skip()
+
+musicplayer_skip_function = FunctionItem("skip", musicplayer_skip)
+playermenu.append_item(musicplayer_skip_function)
+
+def musicplayer_volume(args):
+   volume_level = input(args)
+   global musicplayer
+   musicplayer.set_volume(float(volume_level))
+
+musicplayer_volume_function = FunctionItem("volume", musicplayer_volume, ["volume (0.0-1.0): "])
+playermenu.append_item(musicplayer_volume_function)
+
+def musicplayer_shuffle():
+   global musicplayer
+   musicplayer.toggle_shuffle()
+
+musicplayer_shuffle_function = FunctionItem("shuffle", musicplayer_shuffle)
+playermenu.append_item(musicplayer_shuffle_function)
+
+def musicplayer_fade(args):
+   fade_time_input = input(args)
+   fade_time = max(0, min(10, fade_time_input))
+   global musicplayer
+   musicplayer.fade_duration = float(fade_time)
+
+musicplayer_fade_function = FunctionItem("fade", musicplayer_volume, ["fade in seconds (0.0-10.0): "])
+playermenu.append_item(musicplayer_fade_function)
+
+def musicplayer_stop():
+   global musicplayer
+   musicplayer.stop()
+
+musicplayer_stop_function = FunctionItem("stop", musicplayer_stop)
+playermenu.append_item(musicplayer_stop_function)
 
 viewplaylistsmenu = ConsoleMenu("view playlists")
 viewplaylists_item = SubmenuItem("view playlists", viewplaylistsmenu, menu=menu)
@@ -243,17 +278,27 @@ def addyoutubeplaylist(args):
     download_playlist(youtube_url)
 
 addplaylists_function = FunctionItem("add a youtube playlist", addyoutubeplaylist, ["youtube playlist url: "])
+addplaylistsmenu.append_item(addplaylists_function)
 
+menu.append_item(playermenu_item)
 menu.append_item(viewplaylists_item)
 menu.append_item(addplaylists_item)
 
-addplaylistsmenu.append_item(addplaylists_function)
+def selectplaylist(playlist_path):
+    print(playlist_path)
+    global musicplayer
+    musicplayer = Player(playlist_path)
+    print(musicplayer.play_list)
 
 if __name__ == "__main__":
     valid_playlists = get_valid_playlists()
     for i, (playlist_name, playlist_path) in enumerate(valid_playlists, 1):
-        print(f"{i}. {playlist_name} ({playlist_path})")
         playlistmenu = ConsoleMenu(playlist_name)
         playlistsubmenu = SubmenuItem(playlist_name, playlistmenu, menu=menu)
         viewplaylistsmenu.append_item(playlistsubmenu)
+
+        selectplaylist_function = FunctionItem("select playlist", selectplaylist, [playlist_path])
+        playlistmenu.append_item(selectplaylist_function)
+        selectplaylist(playlist_path)
+
     menu.show()
