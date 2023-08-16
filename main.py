@@ -7,7 +7,9 @@ from pytube import YouTube
 import vlc
 import time
 import random
-import tkinter as tk
+from consolemenu import ConsoleMenu
+
+from consolemenu.items import FunctionItem, SubmenuItem, CommandItem
 
 # Load the environment variables from the .env file
 load_dotenv()
@@ -63,18 +65,21 @@ def download_audio(video_url, folder_path):
     else:
         print(f"file {full_path} already exists. skipping download.")
 
-def view_playlists():
+def get_valid_playlists():
     main_folder = 'playlists'
+    valid_playlists = []
+    
     if os.path.exists(main_folder):
         playlists = os.listdir(main_folder)
-        if playlists:
-            print("\nExisting Playlists:")
-            for i, playlist in enumerate(playlists, 1):
-                print(f"{i}. {playlist}")
-        else:
-            print("\nNo playlists found.")
+        
+        for playlist in playlists:
+            if 'invalid' not in playlist and playlist.strip():
+                full_path = os.path.join(main_folder, playlist)
+                valid_playlists.append((playlist, full_path))
     else:
         print("\nNo playlists directory found.")
+        
+    return valid_playlists
 
 def music_player(playlist_folder):
     player = Player(playlist_folder)
@@ -225,84 +230,30 @@ class Player:
         else:
             self.enable_shuffle()
 
-def on_option1_selected():
-    print("Option 1 selected")
+menu = ConsoleMenu("music buddy", "let me guess tiny, a dime bag?")
 
-def on_option2_selected():
-    print("Option 2 selected")
+viewplaylistsmenu = ConsoleMenu("view playlists")
+viewplaylists_item = SubmenuItem("view playlists", viewplaylistsmenu, menu=menu)
 
-def on_exit_selected():
-    print("Exiting...")
-    root.quit()
+addplaylistsmenu = ConsoleMenu("add playlists")
+addplaylists_item = SubmenuItem("add playlists", addplaylistsmenu, menu=menu)
 
-def play_music():
-    print("Music Playing")
+def addyoutubeplaylist(args):
+    youtube_url = input(args)
+    download_playlist(youtube_url)
 
-def pause_music():
-    print("Music Paused")
+addplaylists_function = FunctionItem("add a youtube playlist", addyoutubeplaylist, ["youtube playlist url: "])
 
-def shuffle_music():
-    print("Music Shuffled")
+menu.append_item(viewplaylists_item)
+menu.append_item(addplaylists_item)
 
-def skip_music():
-    print("Music Skipped")
-
-# Create the main window
-root = tk.Tk()
-root.title("Music Buddy")
-
-# Set the size of the window
-root.geometry("500x200")
-
-# Disable resizing the window
-root.resizable(False, False)
-
-# Load the GIF image file
-bg_image = tk.PhotoImage(file="background.gif")
-
-# Use a Label to display the image, the label acts as a background
-bg_label = tk.Label(root, image=bg_image)
-bg_label.place(relwidth=1, relheight=1)  # Make the label cover the whole window
-
-# Music Section
-music_frame = tk.Frame(root, bg="lightgrey", bd=2)
-music_frame.place(relx=0.05, rely=0.05, relwidth=0.9, relheight=0.5)
-
-# Now Playing Section
-now_playing_frame = tk.Frame(root, bg="lightgrey", bd=2)
-now_playing_frame.place(relx=0.05, rely=0.65, relwidth=0.9, relheight=0.3)
-
-now_playing_label = tk.Label(now_playing_frame, text="Now Playing: Song Title", font=("Arial", 16))
-now_playing_label.pack()
-
-play_button = tk.Button(now_playing_frame, text="Play", command=play_music)
-play_button.pack(side=tk.LEFT, padx=10)
-
-pause_button = tk.Button(now_playing_frame, text="Pause", command=pause_music)
-pause_button.pack(side=tk.LEFT, padx=10)
-
-shuffle_button = tk.Button(now_playing_frame, text="Shuffle", command=shuffle_music)
-shuffle_button.pack(side=tk.LEFT, padx=10)
-
-skip_button = tk.Button(now_playing_frame, text="Skip", command=skip_music)
-skip_button.pack(side=tk.LEFT, padx=10)
-
-# Create a menubar
-menubar = tk.Menu(root)
-
-# Create a menu and add it to the menubar
-filemenu = tk.Menu(menubar, tearoff=0)
-menubar.add_cascade(label="File", menu=filemenu)
-
-# Add options to the menu
-filemenu.add_command(label="Option 1", command=on_option1_selected)
-filemenu.add_command(label="Option 2", command=on_option2_selected)
-filemenu.add_separator()
-filemenu.add_command(label="Exit", command=on_exit_selected)
-
-# Attach the menubar to the main window
-root.config(menu=menubar)
+addplaylistsmenu.append_item(addplaylists_function)
 
 if __name__ == "__main__":
-    # Run the main loop
-    root.mainloop()
+    valid_playlists = get_valid_playlists()
+    for i, (playlist_name, playlist_path) in enumerate(valid_playlists, 1):
+        print(f"{i}. {playlist_name} ({playlist_path})")
+        playlistmenu = ConsoleMenu(playlist_name)
+        playlistsubmenu = SubmenuItem(playlist_name, playlistmenu, menu=menu)
+        viewplaylistsmenu.append_item(playlistsubmenu)
+    menu.show()
