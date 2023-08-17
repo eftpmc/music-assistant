@@ -15,6 +15,8 @@ class VerticalLayoutExample(App):
     musicplayer = Player()
     playlists = get_valid_playlists()
 
+    current_song = "cocoon"
+
     BINDINGS = [
         Binding(key="p", action="toggle_play_pause", description="pause/resume"),
         Binding(key="+", action="increase_volume", description="increase volume"),
@@ -50,13 +52,15 @@ class VerticalLayoutExample(App):
     
     def compose(self) -> ComposeResult:
         yield Header()
-        """
-        yield Horizontal(
-            Static("One", classes="box"),
-            Static("Two", classes="box"),
-            Static("Three", classes="box"),
+        yield Vertical(
+            Horizontal(
+                Static("One", classes="box"),
+                Static("Two", classes="box"),
+                Static("Three", classes="box"),
+            ),
+            Label(self.current_song, classes="status"),
         )
-        """
+        
         yield Footer()
         
 if __name__ == "__main__":
