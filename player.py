@@ -4,28 +4,46 @@ import time
 import random
 
 class Player:
-    def __init__(self, folder_path):
+    def __init__(self):
         self.Instance = vlc.Instance()
         self.player = self.Instance.media_player_new()
         self.MediaList = self.Instance.media_list_new()
         self.MediaListPlayer = self.Instance.media_list_player_new()
         self.MediaListPlayer.set_media_list(self.MediaList)
         self.MediaListPlayer.set_media_player(self.player)
-        
-        self.folder_path = folder_path
-        self.original_play_list = [os.path.join(folder_path, f) for f in os.listdir(folder_path) if f.endswith('.mp3')]
-        self.play_list = self.original_play_list.copy()
+
+        self.play_list = []  # Initialize empty queue
+        self.original_play_list = []  # For storing the initial playlist when shuffle is disabled
         self.index = 0
         self.is_shuffle_enabled = False
         self.is_paused = False
         self.is_playing = False
-        self.current_volume = 100
-        self.fade_duration = 3
-        print(self.play_list)
+        self.current_volume = 50
+
+    def add_song(self, song_path):
+        """
+        Adds a single song to the end of the queue
+        """
+        if song_path.endswith('.mp3'):
+            self.play_list.append(song_path)
+            self.original_play_list.append(song_path)
+            print(f"Added {song_path} to the queue")
+        else:
+            print(f"Invalid file format: {song_path}")
+
+    def add_playlist(self, folder_path):
+        """
+        Adds all songs in the given folder to the end of the queue
+        """
+        playlist = [os.path.join(folder_path, f) for f in os.listdir(folder_path) if f.endswith('.mp3')]
+        self.play_list.extend(playlist)
+        self.original_play_list.extend(playlist)
+        print(f"Added {len(playlist)} songs from {folder_path} to the queue")
 
     def start(self):
         if not self.is_playing:
             self.is_playing = True
+            self.set_volume(self.current_volume)
             self.play()
             print("Music Started")
         else:
@@ -38,8 +56,7 @@ class Player:
 
         self.player.set_media(vlc.Media(self.play_list[self.index]))
         self.player.play()
-        self.fade_in()
-        
+
     def resume(self):
         if self.is_paused:
             self.player.play()
@@ -61,24 +78,14 @@ class Player:
         self.player.play()
         print("Skipped to the next track")
 
-    def fade_in(self):
-        fade_steps = int(self.fade_duration * 10)
-        for step in range(fade_steps):
-            time.sleep(self.fade_duration / fade_steps)
-            volume = int((step + 1) / fade_steps * self.current_volume)
-            self.player.audio_set_volume(volume)
-
-    def fade_out(self):
-        fade_steps = int(self.fade_duration * 10)
-        for step in range(fade_steps):
-            time.sleep(self.fade_duration / fade_steps)
-            volume = int((fade_steps - step - 1) / fade_steps * self.current_volume)
-            self.player.audio_set_volume(volume)
-        self.stop()
+    def stop(self):
+        self.player.stop()
+        print("Music Stopped")
+        self.is_playing = False
 
     def set_volume(self, volume_level):
-        volume = max(0, min(1, volume_level))
-        self.current_volume = int(volume * 100)
+        volume = max(0, min(100, volume_level))
+        self.current_volume = int(volume)
         self.player.audio_set_volume(self.current_volume)
 
     def enable_shuffle(self):
