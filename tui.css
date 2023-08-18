@@ -1,5 +1,9 @@
 Screen {
-    layout: horizontal;
+    layout: vertical;
+}
+
+.container{
+    height: 1fr;
 }
 
 .box {

@@ -1,6 +1,7 @@
 from textual.app import App, ComposeResult
 from textual.reactive import reactive
 from textual.binding import Binding
+from textual.message import Message
 from textual.containers import Horizontal, Vertical
 from textual.widgets import Static, Footer, Header, Label, ListView, ListItem
 
@@ -11,29 +12,38 @@ from playlist_manager import download_playlist
 musicplayer = Player()
 playlists = get_valid_playlists()
 
-class PlaylistList(Static):
-    def on_list_view_selected( self, event: ListView.Selected ) -> None:
-        selectedPlaylist = event.item.get_child_by_type(Label).renderable
-        event.list_view.clear()
-        self.update()
-    def on_mount(self) -> None:
-        playlistsListView = self.query("ListView").first()
-        for name, path in playlists:
-            playlistsListView.append(ListItem(Label(name)))
-    
-    def compose(self) -> ComposeResult:
-        yield ListView()
+class PlaylistSongHorizontal(Static):
+    playlistsList = []
+    songsList = []
 
-class SongList(Static):
-    def on_mount(self) -> None:
-        songsListView = self.query("ListView").first()
-        for playlistName, playlistPath in playlists:
-            playlist_songs = get_songs_in_playlist(playlistPath)
+    def on_list_view_selected( self, event: ListView.Selected ) -> None:
+        selectedViewID = event.control.id
+        if selectedViewID == "playlists":
+            playlistListView = self.query_one("#songs", ListView)
+            playlistListView.clear()
+            selectedPlaylist = event.item.get_child_by_type(Label).renderable
+            playlist_songs = get_songs_in_playlist("playlists/" + str(selectedPlaylist))
             for name, path in playlist_songs:
-                songsListView.append(ListItem(Label(name)))
-    
+                playlistListView.append(ListItem(Label(name)))
+            self.update()
+        else:
+            selectedSong = event.item.get_child_by_type(Label).renderable
+        
+        
+
+    def on_mount(self) -> None:
+        playlistsListView = self.query_one("#playlists", ListView)
+        songsListView = self.query_one("#songs", ListView)
+
+        for playlistName, playlistPath in playlists:
+            playlistsListView.append(ListItem(Label(playlistName)))
+            
+
     def compose(self) -> ComposeResult:
-        yield ListView()
+        yield Horizontal(
+            ListView(id="playlists", classes="box"),
+            ListView(id="songs", classes="box"),
+        )
 
 class Status(Static):
     current_status = reactive("No song playing")
@@ -90,15 +100,8 @@ class MainApp(App):
     
     def compose(self) -> ComposeResult:
         yield Header()
-
-        yield Vertical(
-            Horizontal(
-                PlaylistList(classes="box"),
-                SongList(classes="box"),
-            ),
-            Status(classes="status")
-        )
-        
+        yield PlaylistSongHorizontal(classes="container")
+        yield Status(classes="status")
         yield Footer()
         
 if __name__ == "__main__":
