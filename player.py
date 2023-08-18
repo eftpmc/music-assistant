@@ -20,6 +20,10 @@ class Player:
         self.is_playing = False
         self.current_volume = 50
 
+        self.current_song = "No song playing"
+        self.current_time = "0:00"
+        self.current_length = "0:00"
+
     def add_song(self, song_path):
         """
         Adds a single song to the end of the queue
@@ -54,8 +58,25 @@ class Player:
             print("No songs to play!")
             return
 
+        self.current_song = os.path.basename(self.play_list[self.index])
         self.player.set_media(vlc.Media(self.play_list[self.index]))
         self.player.play()
+        print(f"Playing: {self.current_song}")
+
+    def get_current_time(self):
+        """
+        Updates and returns the current play time of the song and the total length
+        in the format 0:47/2:38
+        """
+        time = self.player.get_time()  # Get time in milliseconds
+        mins, sec = divmod(time // 1000, 60)  # Convert to minutes and seconds
+        self.current_time = f"{mins}:{sec:02}"
+
+        length = self.player.get_length()
+        mins, sec = divmod(length // 1000, 60)  # Convert to minutes and seconds
+        self.current_length = f"{mins}:{sec:02}"
+        
+        return f"{self.current_time}/{self.current_length}"
 
     def resume(self):
         if self.is_paused:
@@ -74,6 +95,7 @@ class Player:
         self.index += 1
         if self.index >= len(self.play_list):
             self.index = 0
+        self.current_song = os.path.basename(self.play_list[self.index])
         self.player.set_media(vlc.Media(self.play_list[self.index]))
         self.player.play()
         print("Skipped to the next track")

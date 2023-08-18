@@ -32,6 +32,30 @@ def get_valid_playlists():
         
     return valid_playlists
 
+def get_songs_in_playlist(playlist_folder):
+    """
+    Get the songs in a given playlist folder.
+    
+    :param playlist_folder: The path to the folder containing the playlist.
+    :return: A list of tuples where each tuple contains (song_name, song_full_path).
+    """
+    songs_in_playlist = []
+    
+    if os.path.exists(playlist_folder):
+        files_in_folder = os.listdir(playlist_folder)
+        
+        for file in files_in_folder:
+            if file.endswith('.mp3') and file.strip():
+                full_path = os.path.join(playlist_folder, file)
+                songs_in_playlist.append((file, full_path))
+                
+        if not songs_in_playlist:
+            print(f"No songs found in the playlist folder: {playlist_folder}")
+    else:
+        print(f"\nPlaylist folder '{playlist_folder}' not found.")
+        
+    return songs_in_playlist
+
 def extract_playlist_id(url):
     playlist_id_match = re.search('list=([a-zA-Z0-9_-]+)', url)
     
